@@ -1,0 +1,127 @@
+services:
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: intent-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: intent
+      POSTGRES_PASSWORD: intent_dev_password
+      POSTGRES_DB: intent_commerce
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U intent -d intent_commerce"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: intent-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: intent-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-storage:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__API_KEY: ""
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: intent-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - apps/backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://intent:intent_dev_password@postgres:5432/intent_commerce
+      REDIS_URL: redis://redis:6379/0
+      QDRANT_URL: http://qdrant:6333
+    volumes:
+      - ./apps/backend:/app
+      - /app/.venv
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    command: >
+      sh -c "poetry run alembic upgrade head &&
+             poetry run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    container_name: intent-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - apps/frontend/.env.local
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    volumes:
+      - ./apps/frontend:/app
+      - /app/node_modules
+      - ./packages/shared:/packages/shared
+    depends_on:
+      - backend
+    command: npm run dev
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: intent-worker
+    restart: unless-stopped
+    env_file:
+      - apps/backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://intent:intent_dev_password@postgres:5432/intent_commerce
+      REDIS_URL: redis://redis:6379/0
+      QDRANT_URL: http://qdrant:6333
+    volumes:
+      - ./apps/backend:/app
+      - /app/.venv
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    command: poetry run celery -A src.worker.main worker --loglevel=info
+
+volumes:
+  postgres-data:
+  redis-data:
+  qdrant-storage:
