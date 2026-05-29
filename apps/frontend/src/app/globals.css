@@ -4,6 +4,19 @@
 
 @layer base {
   :root {
+    --landing-page-bg: #faf7f2;
+    --landing-brand: #245b4f;
+    --landing-brand-hover: #1c463d;
+    --landing-soft-green: #eef7f3;
+    --landing-border: #e7e2da;
+    --landing-text: #111827;
+    --landing-text-secondary: #6b7280;
+    --landing-text-muted: #9ca3af;
+    --landing-success: #1e8a5e;
+    --landing-warning: #b7791f;
+    --landing-accent-amber: #f5a524;
+    --landing-footer: #1c463d;
+
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;

@@ -10,6 +10,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        landing: {
+          page: "var(--landing-page-bg)",
+          brand: "var(--landing-brand)",
+          "brand-hover": "var(--landing-brand-hover)",
+          soft: "var(--landing-soft-green)",
+          border: "var(--landing-border)",
+          text: "var(--landing-text)",
+          secondary: "var(--landing-text-secondary)",
+          muted: "var(--landing-text-muted)",
+          success: "var(--landing-success)",
+          warning: "var(--landing-warning)",
+          amber: "var(--landing-accent-amber)",
+          footer: "var(--landing-footer)",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
